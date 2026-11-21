@@ -1,4 +1,4 @@
-google-adk==2.14.1
+google-adk[mcp,eval]==2.14.1
 google-auth>=2.35.0
 google-genai==2.34.0
 python-dotenv>=1.0.0

@@ -12,7 +12,10 @@ Companion code for the two-part blog series on building a warehouse-native seman
 | [`scripts/04_publish_catalog_metadata.sh`](scripts/04_publish_catalog_metadata.sh) | Enables required APIs and runs Dataplex `data-profile` and `data-documentation` scans with `--enable-catalog-publishing` |
 | [`agent/agent.py`](agent/agent.py) | Google ADK `root_agent` using `gemini-4-hydrogen` and `McpToolset` with dynamic OAuth `header_provider` connected to Knowledge Catalog MCP (`https://dataplex.googleapis.com/mcp`) and BigQuery MCP (`https://bigquery.googleapis.com/mcp`) |
 | [`agent/run_demo.py`](agent/run_demo.py) | Runs the 9-question multi-turn walkthrough via ADK `InMemoryRunner` |
-| [`agent/eval.py`](agent/eval.py) | Isolated-session programmatic eval harness (`Q1`–`Q9` + 8 held-out adversarial traps `H1`–`H8`) with cold-start discovery, SQL governance, and ground-truth assertions |
+| [`evals/commerce_graph.evalset.json`](evals/commerce_graph.evalset.json) | Native ADK EvalSet covering the 9 core business questions (`Q1`–`Q9`) in isolated sessions |
+| [`evals/heldout_traps.evalset.json`](evals/heldout_traps.evalset.json) | Native ADK EvalSet covering 8 held-out adversarial traps (`H1`–`H8`) phrased without matching DDL synonyms |
+| [`evals/eval_config.json`](evals/eval_config.json) | Native ADK `EvalConfig` combining `final_response_match_v2`, `hallucinations_v1`, and deterministic SQL/MCP custom metrics (`parallelism: 1` for safe `McpToolset` lifecycle) |
+| [`evals/sql_governance_metrics.py`](evals/sql_governance_metrics.py) | Native ADK `custom_metrics` verifying cold-start catalog discovery, graph-only SQL, `AGG()` on measures, and zero BigQuery MCP errors |
 
 ## Quickstart
 
@@ -34,7 +37,7 @@ export DATASCAN_LOCATION="us-central1"
 ./scripts/04_publish_catalog_metadata.sh
 ```
 
-### 3. Run the Google ADK agent and evals
+### 3. Run the Google ADK agent and native ADK evals
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
@@ -47,9 +50,14 @@ gcloud auth application-default login --project="your-project-id"
 # Run the 9-question multi-turn walkthrough
 python3 agent/run_demo.py
 
-# Run isolated cold-start programmatic evals (Q1–Q9 + H1–H8, k=3 passes)
-python3 agent/eval.py --suite all --runs 3
+# Run native ADK evaluations (isolated sessions per case, k=3 runs)
+PYTHONPATH=. adk eval agent \
+  evals/commerce_graph.evalset.json \
+  evals/heldout_traps.evalset.json \
+  --config_file_path evals/eval_config.json \
+  --num_runs 3 \
+  --print_detailed_results
 
-# Or launch the interactive ADK web UI
+# Or launch the interactive ADK web UI (also opens the Eval tab for evals/*.evalset.json)
 adk web .
 ```

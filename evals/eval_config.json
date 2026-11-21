@@ -1,0 +1,36 @@
+{
+  "parallelism": 1,
+  "criteria": {
+    "final_response_match_v2": {
+      "threshold": 1.0,
+      "judge_model_options": {
+        "judge_model": "gemini-4-hydrogen",
+        "num_samples": 3
+      }
+    },
+    "hallucinations_v1": {
+      "threshold": 0.8,
+      "judge_model_options": {
+        "judge_model": "gemini-4-hydrogen",
+        "num_samples": 3
+      },
+      "evaluate_intermediate_nl_responses": false
+    },
+    "catalog_discovery_first": 1.0,
+    "semantic_graph_sql_governance": 1.0
+  },
+  "custom_metrics": {
+    "catalog_discovery_first": {
+      "code_config": {
+        "name": "evals.sql_governance_metrics.catalog_discovery_first"
+      },
+      "description": "Checks that search_entries and lookup_context run before any BigQuery SQL call."
+    },
+    "semantic_graph_sql_governance": {
+      "code_config": {
+        "name": "evals.sql_governance_metrics.semantic_graph_sql_governance"
+      },
+      "description": "Checks that all SQL queries use GRAPH_EXPAND or ISO GQL, wrap measures in AGG(), avoid raw base tables, and return zero BigQuery MCP errors."
+    }
+  }
+}
