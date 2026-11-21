@@ -74,16 +74,13 @@ CREATE OR REPLACE PROPERTY GRAPH demo.CommerceGraph
     demo.order_items AS LineOf
       KEY (item_id)
       SOURCE KEY (item_id) REFERENCES OrderItem (item_id)
-      DESTINATION KEY (order_id) REFERENCES Orders (order_id)
-      NO PROPERTIES,
+      DESTINATION KEY (order_id) REFERENCES Orders (order_id),
     demo.orders AS PlacedBy
       KEY (order_id)
       SOURCE KEY (order_id) REFERENCES Orders (order_id)
-      DESTINATION KEY (customer_id) REFERENCES Customer (customer_id)
-      NO PROPERTIES,
+      DESTINATION KEY (customer_id) REFERENCES Customer (customer_id),
     demo.support_tickets AS OpenedBy
       KEY (ticket_id)
       SOURCE KEY (ticket_id) REFERENCES SupportTicket (ticket_id)
       DESTINATION KEY (customer_id) REFERENCES Customer (customer_id)
-      NO PROPERTIES
   );

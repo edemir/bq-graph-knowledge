@@ -7,7 +7,7 @@ Companion code for the two-part blog series on building a warehouse-native seman
 | Path | Description |
 | :--- | :--- |
 | [`sql/01_seed_tables.sql`](sql/01_seed_tables.sql) | Creates `demo.customers`, `demo.orders`, `demo.order_items`, and `demo.support_tickets` (14 rows total) |
-| [`sql/02_commerce_graph.sql`](sql/02_commerce_graph.sql) | Defines `demo.CommerceGraph` (`CREATE OR REPLACE PROPERTY GRAPH`) with grain-locked measures, derived ratios, synonyms, and `NO PROPERTIES` edges |
+| [`sql/02_commerce_graph.sql`](sql/02_commerce_graph.sql) | Defines `demo.CommerceGraph` (`CREATE OR REPLACE PROPERTY GRAPH`) with grain-locked measures, derived ratios, and business synonyms |
 | [`sql/03_queries.sql`](sql/03_queries.sql) | Part 1 verification queries: `GRAPH_EXPAND` with child filters, multi-fact `FULL OUTER JOIN`, and ISO GQL `MATCH` root-cause traversal |
 | [`scripts/04_publish_catalog_metadata.sh`](scripts/04_publish_catalog_metadata.sh) | Enables required APIs and runs Dataplex `data-profile` and `data-documentation` scans with `--enable-catalog-publishing` |
 | [`agent/agent.py`](agent/agent.py) | Google ADK `root_agent` using `gemini-4-hydrogen` and `McpToolset` with dynamic OAuth `header_provider` connected to Knowledge Catalog MCP (`https://dataplex.googleapis.com/mcp`) and BigQuery MCP (`https://bigquery.googleapis.com/mcp`) |
