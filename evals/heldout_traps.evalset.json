@@ -7,10 +7,17 @@
       "eval_id": "H1_hardware_delivery_fanout",
       "conversation": [
         {
-          "invocation_id": "h1-1",
+          "invocation_id": "h1-graph_expand",
           "user_content": {
             "parts": [{"text": "Total delivery charges on orders containing at least one Hardware item, by segment?"}],
             "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "search_entries"},
+              {"name": "lookup_context"},
+              {"name": "execute_sql_readonly"}
+            ]
           },
           "final_response": {
             "parts": [{"text": "Total delivery charges (shipping) on orders containing at least one Hardware item: Enterprise is $40.00 (and SMB has no Hardware orders / $0.00)."}],
@@ -24,10 +31,17 @@
       "eval_id": "H2_hardware_refund_share_fanout",
       "conversation": [
         {
-          "invocation_id": "h2-1",
+          "invocation_id": "h2-graph_expand",
           "user_content": {
             "parts": [{"text": "What share of the value of orders that included Hardware was later refunded?"}],
             "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "search_entries"},
+              {"name": "lookup_context"},
+              {"name": "execute_sql_readonly"}
+            ]
           },
           "final_response": {
             "parts": [{"text": "10.0% of the gross value of orders containing Hardware was refunded ($100.00 refunded out of $1,000.00 gross revenue)."}],
@@ -41,10 +55,17 @@
       "eval_id": "H3_zero_order_customer_support",
       "conversation": [
         {
-          "invocation_id": "h3-1",
+          "invocation_id": "h3-graph_any",
           "user_content": {
             "parts": [{"text": "How many customers have never bought anything, and did any of them contact support?"}],
             "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "search_entries"},
+              {"name": "lookup_context"},
+              {"name": "execute_sql_readonly"}
+            ]
           },
           "final_response": {
             "parts": [{"text": "1 customer has never bought anything: Beta (Cust-002, Enterprise). Yes, Beta contacted support and opened 1 support ticket."}],
@@ -58,10 +79,16 @@
       "eval_id": "H4_month_over_month_abstain",
       "conversation": [
         {
-          "invocation_id": "h4-1",
+          "invocation_id": "h4-no_sql",
           "user_content": {
             "parts": [{"text": "How did sales trend month over month?"}],
             "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "search_entries"},
+              {"name": "lookup_context"}
+            ]
           },
           "final_response": {
             "parts": [{"text": "Month-over-month sales trends cannot be calculated because there are no date, timestamp, or month columns in the graph or its backing tables."}],
@@ -75,10 +102,17 @@
       "eval_id": "H5_partial_scope_processing_fees",
       "conversation": [
         {
-          "invocation_id": "h5-1",
+          "invocation_id": "h5-graph_expand",
           "user_content": {
             "parts": [{"text": "Gross and net revenue after refunds and payment-processing fees by segment?"}],
             "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "search_entries"},
+              {"name": "lookup_context"},
+              {"name": "execute_sql_readonly"}
+            ]
           },
           "final_response": {
             "parts": [{"text": "Payment-processing fees are missing from the catalog, so net revenue after processing fees cannot be calculated. Grounded figures by segment: Enterprise has $1,000.00 gross revenue and $900.00 net revenue after refunds ($100.00 refunded); SMB has $200.00 gross revenue and $200.00 net revenue after refunds ($0.00 refunded)."}],
@@ -92,10 +126,17 @@
       "eval_id": "H6_support_per_dollar_zero_denom",
       "conversation": [
         {
-          "invocation_id": "h6-1",
+          "invocation_id": "h6-graph_expand",
           "user_content": {
             "parts": [{"text": "Which customer needed the most support time per dollar spent?"}],
             "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "search_entries"},
+              {"name": "lookup_context"},
+              {"name": "execute_sql_readonly"}
+            ]
           },
           "final_response": {
             "parts": [{"text": "Acme (Cust-001) needed the most support time per dollar spent at 0.012 support hours per dollar (12 hours / $1,000.00). Cozy (Cust-003) is 0.0 hours per dollar (0 hours / $200.00). Beta (Cust-002) has 2 support hours and $0.00 spent, so their ratio is undefined (NULL)."}],
@@ -109,10 +150,17 @@
       "eval_id": "H7_empty_result_literal_case",
       "conversation": [
         {
-          "invocation_id": "h7-1",
+          "invocation_id": "h7-graph_expand",
           "user_content": {
             "parts": [{"text": "How much software did our enterprise accounts buy?"}],
             "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "search_entries"},
+              {"name": "lookup_context"},
+              {"name": "execute_sql_readonly"}
+            ]
           },
           "final_response": {
             "parts": [{"text": "Enterprise accounts bought $0.00 of Software (there are no matching Software purchases for Enterprise customers)."}],
@@ -126,10 +174,17 @@
       "eval_id": "H8_support_customers_order_value_chasm",
       "conversation": [
         {
-          "invocation_id": "h8-1",
+          "invocation_id": "h8-graph_expand",
           "user_content": {
             "parts": [{"text": "For customers who contacted support, what is the total value of their orders?"}],
             "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "search_entries"},
+              {"name": "lookup_context"},
+              {"name": "execute_sql_readonly"}
+            ]
           },
           "final_response": {
             "parts": [{"text": "For customers who contacted support, the total value of their orders (gross revenue) is $1,000.00."}],

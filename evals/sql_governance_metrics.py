@@ -1,8 +1,13 @@
-"""Deterministic native ADK custom metrics for Knowledge Catalog + BigQuery Graph MCP.
+"""Deterministic native ADK custom metric for BigQuery Semantic Graph SQL/GQL governance.
 
-Registered in evals/eval_config.json under `custom_metrics` and executed directly
-by `adk eval` alongside ADK's built-in LLM judges (`final_response_match_v2`,
-`hallucinations_v1`).
+Tool call sequencing (`search_entries` -> `lookup_context` -> `execute_sql_readonly`)
+is enforced natively by ADK's built-in `tool_trajectory_avg_score` (`IN_ORDER`,
+`ignore_args: true`). This module covers only SQL/GQL payload checks that
+argument-ignoring trajectory matching and LLM judges cannot check deterministically:
+  - Expected query dialect per invocation (`-graph_expand`, `-gql_match`, `-no_sql`, `-graph_any`)
+  - No raw base-table queries (must target the semantic graph)
+  - No SUM/AVG/COUNT wrapping semantic MEASURE fields
+  - Zero BigQuery MCP execution errors (outer `isError` or JSON error body)
 """
 
 from __future__ import annotations
@@ -40,6 +45,26 @@ BAD_MEASURE_AGG_RE = re.compile(
 )
 
 
+def _resolve_threshold(eval_metric: EvalMetric) -> float:
+    if eval_metric.threshold is not None:
+        return float(eval_metric.threshold)
+    criterion = getattr(eval_metric, "criterion", None)
+    if criterion is not None and criterion.threshold is not None:
+        return float(criterion.threshold)
+    return 1.0
+
+
+def _expected_mode(expected_invocation: Optional[Invocation]) -> str:
+    """Derive expected SQL/GQL dialect from expected invocation_id suffix."""
+    if expected_invocation is None or not expected_invocation.invocation_id:
+        return "graph_any"
+    inv_id = expected_invocation.invocation_id.lower()
+    for mode in ("graph_expand", "gql_match", "no_sql", "graph_any"):
+        if inv_id.endswith(f"-{mode}"):
+            return mode
+    return "graph_any"
+
+
 def _response_has_sql_error(resp_obj: Any) -> bool:
     """Detect BigQuery MCP errors in either the outer MCP envelope or JSON body."""
     if resp_obj is None:
@@ -47,10 +72,11 @@ def _response_has_sql_error(resp_obj: Any) -> bool:
     if isinstance(resp_obj, dict):
         if resp_obj.get("isError"):
             return True
-        text_blob = ""
-        for item in resp_obj.get("content", []):
-            if isinstance(item, dict) and item.get("type") == "text":
-                text_blob += item.get("text", "")
+        text_blob = "".join(
+            item.get("text", "")
+            for item in resp_obj.get("content", [])
+            if isinstance(item, dict) and item.get("type") == "text"
+        )
         if text_blob:
             try:
                 parsed = json.loads(text_blob)
@@ -61,90 +87,51 @@ def _response_has_sql_error(resp_obj: Any) -> bool:
     return False
 
 
-def _resolve_threshold(eval_metric: EvalMetric) -> float:
-    if eval_metric.threshold is not None:
-        return float(eval_metric.threshold)
-    if getattr(eval_metric, "criterion", None) is not None and eval_metric.criterion.threshold is not None:
-        return float(eval_metric.criterion.threshold)
-    return 1.0
-
-
-def catalog_discovery_first(
-    eval_metric: EvalMetric,
-    actual_invocations: list[Invocation],
-    expected_invocations: Optional[list[Invocation]] = None,
-    conversation_scenario: Optional[ConversationScenario] = None,
-) -> EvaluationResult:
-    """Verify Knowledge Catalog discovery (`search_entries` -> `lookup_context`) precedes SQL."""
-    per_inv: list[PerInvocationResult] = []
-    scores: list[float] = []
-    threshold = _resolve_threshold(eval_metric)
-
-    for idx, inv in enumerate(actual_invocations):
-        pairs = get_all_tool_calls_with_responses(inv.intermediate_data)
-        names = [tc.name for tc, _ in pairs]
-
-        has_search = "search_entries" in names
-        has_lookup = "lookup_context" in names
-        sql_indices = [i for i, n in enumerate(names) if n == "execute_sql_readonly"]
-
-        ok = has_search and has_lookup
-        if ok and sql_indices:
-            ok = names.index("lookup_context") < sql_indices[0]
-
-        score = 1.0 if ok else 0.0
-        scores.append(score)
-        exp = expected_invocations[idx] if expected_invocations and idx < len(expected_invocations) else None
-        per_inv.append(
-            PerInvocationResult(
-                actual_invocation=inv,
-                expected_invocation=exp,
-                score=score,
-                eval_status=EvalStatus.PASSED if score >= threshold else EvalStatus.FAILED,
-            )
-        )
-
-    overall = sum(scores) / len(scores) if scores else 0.0
-    return EvaluationResult(
-        overall_score=overall,
-        overall_eval_status=EvalStatus.PASSED if overall >= threshold else EvalStatus.FAILED,
-        per_invocation_results=per_inv,
-    )
-
-
 def semantic_graph_sql_governance(
     eval_metric: EvalMetric,
     actual_invocations: list[Invocation],
     expected_invocations: Optional[list[Invocation]] = None,
     conversation_scenario: Optional[ConversationScenario] = None,
 ) -> EvaluationResult:
-    """Verify every SQL call targets the semantic graph, uses AGG() on measures, and has 0 MCP errors."""
+    """Verify SQL/GQL dialect compliance, measure governance, and zero BigQuery MCP errors."""
     per_inv: list[PerInvocationResult] = []
     scores: list[float] = []
     threshold = _resolve_threshold(eval_metric)
 
     for idx, inv in enumerate(actual_invocations):
+        exp = expected_invocations[idx] if expected_invocations and idx < len(expected_invocations) else None
+        mode = _expected_mode(exp)
+
         pairs = get_all_tool_calls_with_responses(inv.intermediate_data)
         sql_pairs = [(tc, tr) for tc, tr in pairs if tc.name == "execute_sql_readonly"]
 
         ok = True
-        for tc, tr in sql_pairs:
-            query = str((tc.args or {}).get("query", ""))
-            if RAW_TABLE_RE.search(query):
+        if mode == "no_sql":
+            ok = len(sql_pairs) == 0
+        else:
+            if mode in ("graph_expand", "gql_match") and not sql_pairs:
                 ok = False
-            if not ("GRAPH_EXPAND" in query.upper() or "GRAPH " in query.upper()):
-                ok = False
-            if BAD_MEASURE_AGG_RE.search(query):
-                ok = False
-            if "FARM_FINGERPRINT" in query.upper():
-                ok = False
-            resp_payload = tr.response if tr is not None else None
-            if _response_has_sql_error(resp_payload):
-                ok = False
+            for tc, tr in sql_pairs:
+                query = str((tc.args or {}).get("query", ""))
+                q_upper = query.upper()
+                has_expand = "GRAPH_EXPAND(" in q_upper
+                has_gql = "GRAPH " in q_upper and "MATCH" in q_upper
+
+                if RAW_TABLE_RE.search(query) or BAD_MEASURE_AGG_RE.search(query):
+                    ok = False
+                if "FARM_FINGERPRINT" in q_upper:
+                    ok = False
+                if mode == "graph_expand" and not (has_expand and "AGG(" in q_upper):
+                    ok = False
+                elif mode == "gql_match" and not has_gql:
+                    ok = False
+                elif mode == "graph_any" and not (has_expand or has_gql):
+                    ok = False
+                if _response_has_sql_error(tr.response if tr is not None else None):
+                    ok = False
 
         score = 1.0 if ok else 0.0
         scores.append(score)
-        exp = expected_invocations[idx] if expected_invocations and idx < len(expected_invocations) else None
         per_inv.append(
             PerInvocationResult(
                 actual_invocation=inv,

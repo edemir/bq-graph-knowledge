@@ -7,10 +7,17 @@
       "eval_id": "Q1_accessory_shipping",
       "conversation": [
         {
-          "invocation_id": "q1-1",
+          "invocation_id": "q1-graph_expand",
           "user_content": {
             "parts": [{"text": "For Enterprise customers, how much did we sell in Accessories and what was the total shipping on those orders?"}],
             "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "search_entries"},
+              {"name": "lookup_context"},
+              {"name": "execute_sql_readonly"}
+            ]
           },
           "final_response": {
             "parts": [{"text": "For Enterprise customers, Accessory sales were $100.00 and total shipping on those orders was $30.00."}],
@@ -24,10 +31,17 @@
       "eval_id": "Q2_return_rate_synonym",
       "conversation": [
         {
-          "invocation_id": "q2-1",
+          "invocation_id": "q2-graph_expand",
           "user_content": {
             "parts": [{"text": "What is our return rate by customer segment?"}],
             "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "search_entries"},
+              {"name": "lookup_context"},
+              {"name": "execute_sql_readonly"}
+            ]
           },
           "final_response": {
             "parts": [{"text": "Dollar-weighted return (refund) rate by customer segment: Enterprise is 10.0%, and SMB is 0.0%."}],
@@ -41,10 +55,17 @@
       "eval_id": "Q3_paying_customers_rollup",
       "conversation": [
         {
-          "invocation_id": "q3-1",
+          "invocation_id": "q3-graph_expand",
           "user_content": {
             "parts": [{"text": "How many paying customers do we have in each segment, and how many in each product category within Enterprise?"}],
             "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "search_entries"},
+              {"name": "lookup_context"},
+              {"name": "execute_sql_readonly"}
+            ]
           },
           "final_response": {
             "parts": [{"text": "Distinct paying customers (completed orders only): by segment, Enterprise has 1 and SMB has 1; within Enterprise by product category, Accessory has 1 and Hardware has 1."}],
@@ -58,10 +79,17 @@
       "eval_id": "Q4_multifact_chasm_zero_order",
       "conversation": [
         {
-          "invocation_id": "q4-1",
+          "invocation_id": "q4-graph_expand",
           "user_content": {
             "parts": [{"text": "By customer segment, show me GMV alongside total support tickets and total resolution hours."}],
             "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "search_entries"},
+              {"name": "lookup_context"},
+              {"name": "execute_sql_readonly"}
+            ]
           },
           "final_response": {
             "parts": [{"text": "By customer segment: Enterprise has $1,000.00 GMV, 3 support tickets, and 14 resolution hours; SMB has $200.00 GMV, 0 support tickets, and 0 resolution hours."}],
@@ -75,10 +103,17 @@
       "eval_id": "Q5_cross_node_ratio",
       "conversation": [
         {
-          "invocation_id": "q5-1",
+          "invocation_id": "q5-graph_expand",
           "user_content": {
             "parts": [{"text": "For Enterprise, what is the average support resolution hours per order?"}],
             "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "search_entries"},
+              {"name": "lookup_context"},
+              {"name": "execute_sql_readonly"}
+            ]
           },
           "final_response": {
             "parts": [{"text": "For Enterprise, the average support resolution hours per order is 7.0 hours (14 total resolution hours across 2 orders)."}],
@@ -92,10 +127,17 @@
       "eval_id": "Q6_what_to_why_traversal",
       "conversation": [
         {
-          "invocation_id": "q6-1",
+          "invocation_id": "q6-gql_match",
           "user_content": {
             "parts": [{"text": "Which Enterprise customer had a refunded order, and what support tickets did they open?"}],
             "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "search_entries"},
+              {"name": "lookup_context"},
+              {"name": "execute_sql_readonly"}
+            ]
           },
           "final_response": {
             "parts": [{"text": "Acme (Cust-001) had refunded order Ord-002 ($100.00) and opened two support tickets: Tkt-001 (billing, 4 resolution hours) and Tkt-002 (shipping, 8 resolution hours)."}],
@@ -109,10 +151,16 @@
       "eval_id": "Q7_out_of_scope_abstention",
       "conversation": [
         {
-          "invocation_id": "q7-1",
+          "invocation_id": "q7-graph_any",
           "user_content": {
             "parts": [{"text": "What is our net profit margin after warehouse rent and shipping costs by segment?"}],
             "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "search_entries"},
+              {"name": "lookup_context"}
+            ]
           },
           "final_response": {
             "parts": [{"text": "Net profit margin after warehouse rent cannot be calculated because warehouse rent (and cost/expense data such as COGS) is missing from the catalog. Grounded figures available by segment are gross revenue (Enterprise $1,000.00, SMB $200.00), refunded revenue (Enterprise $100.00, SMB $0.00), and total shipping (Enterprise $40.00, SMB $15.00)."}],
@@ -126,10 +174,17 @@
       "eval_id": "Q8_row_level_order_filter",
       "conversation": [
         {
-          "invocation_id": "q8-1",
+          "invocation_id": "q8-graph_expand",
           "user_content": {
             "parts": [{"text": "For Enterprise orders over $500, what was the total gross revenue and total shipping?"}],
             "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "search_entries"},
+              {"name": "lookup_context"},
+              {"name": "execute_sql_readonly"}
+            ]
           },
           "final_response": {
             "parts": [{"text": "For Enterprise orders over $500, total gross revenue was $900.00 and total shipping was $30.00."}],
@@ -143,10 +198,17 @@
       "eval_id": "Q9_stress_scorecard",
       "conversation": [
         {
-          "invocation_id": "q9-1",
+          "invocation_id": "q9-graph_expand",
           "user_content": {
             "parts": [{"text": "For every customer segment, compare total GMV, return rate, paying customers, Hardware sales, shipping on orders that included Accessories, and support resolution hours per dollar of GMV, without dropping customers who have not ordered yet."}],
             "role": "user"
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {"name": "search_entries"},
+              {"name": "lookup_context"},
+              {"name": "execute_sql_readonly"}
+            ]
           },
           "final_response": {
             "parts": [{"text": "Enterprise: $1,000.00 GMV, 10.0% return rate, 1 paying customer, $900.00 Hardware sales, $30.00 shipping on orders including Accessories, and 0.014 support resolution hours per dollar of GMV. SMB: $200.00 GMV, 0.0% return rate, 1 paying customer, $0.00 Hardware sales, $0.00 shipping on orders including Accessories, and 0.0 support resolution hours per dollar of GMV."}],

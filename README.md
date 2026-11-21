@@ -14,8 +14,8 @@ Companion code for the two-part blog series on building a warehouse-native seman
 | [`agent/run_demo.py`](agent/run_demo.py) | Runs the 9-question multi-turn walkthrough via ADK `InMemoryRunner` |
 | [`evals/commerce_graph.evalset.json`](evals/commerce_graph.evalset.json) | Native ADK EvalSet covering the 9 core business questions (`Q1`–`Q9`) in isolated sessions |
 | [`evals/heldout_traps.evalset.json`](evals/heldout_traps.evalset.json) | Native ADK EvalSet covering 8 held-out adversarial traps (`H1`–`H8`) phrased without matching DDL synonyms |
-| [`evals/eval_config.json`](evals/eval_config.json) | Native ADK `EvalConfig` combining `final_response_match_v2`, `hallucinations_v1`, and deterministic SQL/MCP custom metrics (`parallelism: 1` for safe `McpToolset` lifecycle) |
-| [`evals/sql_governance_metrics.py`](evals/sql_governance_metrics.py) | Native ADK `custom_metrics` verifying cold-start catalog discovery, graph-only SQL, `AGG()` on measures, and zero BigQuery MCP errors |
+| [`evals/eval_config.json`](evals/eval_config.json) | Native ADK `EvalConfig` combining `tool_trajectory_avg_score` (`IN_ORDER`, `ignore_args: true`), `final_response_match_v2`, `hallucinations_v1`, and `semantic_graph_sql_governance` (`parallelism: 1` for safe `McpToolset` lifecycle) |
+| [`evals/sql_governance_metrics.py`](evals/sql_governance_metrics.py) | Single non-redundant ADK custom metric enforcing expected SQL/GQL dialect (`GRAPH_EXPAND`+`AGG` vs ISO GQL `MATCH` vs `no_sql`), blocking raw base tables, and verifying zero BigQuery MCP errors |
 
 ## Quickstart
 

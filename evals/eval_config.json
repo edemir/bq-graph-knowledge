@@ -1,6 +1,11 @@
 {
   "parallelism": 1,
   "criteria": {
+    "tool_trajectory_avg_score": {
+      "threshold": 1.0,
+      "match_type": "IN_ORDER",
+      "ignore_args": true
+    },
     "final_response_match_v2": {
       "threshold": 1.0,
       "judge_model_options": {
@@ -16,21 +21,14 @@
       },
       "evaluate_intermediate_nl_responses": false
     },
-    "catalog_discovery_first": 1.0,
     "semantic_graph_sql_governance": 1.0
   },
   "custom_metrics": {
-    "catalog_discovery_first": {
-      "code_config": {
-        "name": "evals.sql_governance_metrics.catalog_discovery_first"
-      },
-      "description": "Checks that search_entries and lookup_context run before any BigQuery SQL call."
-    },
     "semantic_graph_sql_governance": {
       "code_config": {
         "name": "evals.sql_governance_metrics.semantic_graph_sql_governance"
       },
-      "description": "Checks that all SQL queries use GRAPH_EXPAND or ISO GQL, wrap measures in AGG(), avoid raw base tables, and return zero BigQuery MCP errors."
+      "description": "Enforces expected SQL/GQL dialect (GRAPH_EXPAND+AGG vs ISO GQL MATCH vs no SQL), blocks raw base-table queries and non-AGG measure wrapping, and verifies zero BigQuery MCP errors."
     }
   }
 }
