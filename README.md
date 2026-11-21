@@ -10,8 +10,9 @@ Companion code for the two-part blog series on building a warehouse-native seman
 | [`sql/02_commerce_graph.sql`](sql/02_commerce_graph.sql) | Defines `demo.CommerceGraph` (`CREATE OR REPLACE PROPERTY GRAPH`) with grain-locked measures, derived ratios, synonyms, and `NO PROPERTIES` edges |
 | [`sql/03_queries.sql`](sql/03_queries.sql) | Part 1 verification queries: `GRAPH_EXPAND` with child filters, multi-fact `FULL OUTER JOIN`, and ISO GQL `MATCH` root-cause traversal |
 | [`scripts/04_publish_catalog_metadata.sh`](scripts/04_publish_catalog_metadata.sh) | Enables required APIs and runs Dataplex `data-profile` and `data-documentation` scans with `--enable-catalog-publishing` |
-| [`agent/agent.py`](agent/agent.py) | Google ADK `root_agent` using `gemini-4-hydrogen` and `McpToolset` connected to Knowledge Catalog MCP (`https://dataplex.googleapis.com/mcp`) and BigQuery MCP (`https://bigquery.googleapis.com/mcp`) |
+| [`agent/agent.py`](agent/agent.py) | Google ADK `root_agent` using `gemini-4-hydrogen` and `McpToolset` with dynamic OAuth `header_provider` connected to Knowledge Catalog MCP (`https://dataplex.googleapis.com/mcp`) and BigQuery MCP (`https://bigquery.googleapis.com/mcp`) |
 | [`agent/run_demo.py`](agent/run_demo.py) | Runs the 9-question multi-turn walkthrough via ADK `InMemoryRunner` |
+| [`agent/eval.py`](agent/eval.py) | Isolated-session programmatic eval harness (`Q1`–`Q9` + 8 held-out adversarial traps `H1`–`H8`) with cold-start discovery, SQL governance, and ground-truth assertions |
 
 ## Quickstart
 
@@ -33,21 +34,21 @@ export DATASCAN_LOCATION="us-central1"
 ./scripts/04_publish_catalog_metadata.sh
 ```
 
-### 3. Run the Google ADK agent
+### 3. Run the Google ADK agent and evals
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-gcloud auth application-default login --project="$GOOGLE_CLOUD_PROJECT"
+cp .env.example .env
+# Edit .env with your GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_PROJECT_NUMBER
+gcloud auth application-default login --project="your-project-id"
 
-export GOOGLE_GENAI_USE_VERTEXAI=TRUE
-export GOOGLE_CLOUD_LOCATION=global
-export GOOGLE_CLOUD_PROJECT="your-project-id"
-export GOOGLE_CLOUD_PROJECT_NUMBER="$(gcloud projects describe "$GOOGLE_CLOUD_PROJECT" --format='value(projectNumber)')"
-
-# Run the 9-question walkthrough
+# Run the 9-question multi-turn walkthrough
 python3 agent/run_demo.py
+
+# Run isolated cold-start programmatic evals (Q1–Q9 + H1–H8, k=3 passes)
+python3 agent/eval.py --suite all --runs 3
 
 # Or launch the interactive ADK web UI
 adk web .

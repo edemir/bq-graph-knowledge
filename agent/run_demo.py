@@ -53,6 +53,7 @@ async def main() -> None:
                             final_text += part.text
             print(f"\n{final_text.strip()}")
     finally:
+        await runner.close()
         await knowledge_catalog_mcp.close()
         await bigquery_mcp.close()
 
