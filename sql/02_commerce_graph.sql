@@ -1,11 +1,17 @@
 CREATE OR REPLACE PROPERTY GRAPH demo.CommerceGraph
   NODE TABLES (
     demo.customers AS Customer
-      KEY (customer_id)
+      DEFAULT LABEL OPTIONS (
+        description = 'Customer accounts across Enterprise and SMB segments',
+        synonyms = ['account', 'client']
+      )
       PROPERTIES (customer_id, customer_name, segment),
 
     demo.orders AS Orders
-      KEY (order_id)
+      DEFAULT LABEL OPTIONS (
+        description = 'Customer purchase orders at one row per order',
+        synonyms = ['purchase', 'transaction']
+      )
       PROPERTIES (
         order_id, customer_id, status, order_total, shipping_fee,
         MEASURE(SUM(order_total)) AS gross_revenue OPTIONS (
@@ -44,7 +50,10 @@ CREATE OR REPLACE PROPERTY GRAPH demo.CommerceGraph
       ),
 
     demo.order_items AS OrderItem
-      KEY (item_id)
+      DEFAULT LABEL OPTIONS (
+        description = 'Individual product line items within an order',
+        synonyms = ['line item', 'order line']
+      )
       PROPERTIES (
         item_id, order_id, category, unit_price, qty,
         MEASURE(SUM(unit_price * qty)) AS item_sales OPTIONS (
@@ -55,7 +64,10 @@ CREATE OR REPLACE PROPERTY GRAPH demo.CommerceGraph
       ),
 
     demo.support_tickets AS SupportTicket
-      KEY (ticket_id)
+      DEFAULT LABEL OPTIONS (
+        description = 'Customer support tickets with topic and resolution time',
+        synonyms = ['case', 'helpdesk ticket']
+      )
       PROPERTIES (
         ticket_id, customer_id, topic, resolution_hours,
         MEASURE(COUNT(ticket_id)) AS ticket_count OPTIONS (
@@ -72,15 +84,30 @@ CREATE OR REPLACE PROPERTY GRAPH demo.CommerceGraph
   )
   EDGE TABLES (
     demo.order_items AS LineOf
-      KEY (item_id)
       SOURCE KEY (item_id) REFERENCES OrderItem (item_id)
-      DESTINATION KEY (order_id) REFERENCES Orders (order_id),
+      DESTINATION KEY (order_id) REFERENCES Orders (order_id)
+      DEFAULT LABEL OPTIONS (
+        description = 'Connects each order line item to its parent order (N:1)',
+        synonyms = ['belongs to order', 'part of order'],
+        extensions = [('cardinality', 'N:1')]
+      )
+      NO PROPERTIES,
     demo.orders AS PlacedBy
-      KEY (order_id)
       SOURCE KEY (order_id) REFERENCES Orders (order_id)
-      DESTINATION KEY (customer_id) REFERENCES Customer (customer_id),
+      DESTINATION KEY (customer_id) REFERENCES Customer (customer_id)
+      DEFAULT LABEL OPTIONS (
+        description = 'Connects each order to the customer who placed it (N:1)',
+        synonyms = ['ordered by', 'bought by'],
+        extensions = [('cardinality', 'N:1')]
+      )
+      NO PROPERTIES,
     demo.support_tickets AS OpenedBy
-      KEY (ticket_id)
       SOURCE KEY (ticket_id) REFERENCES SupportTicket (ticket_id)
       DESTINATION KEY (customer_id) REFERENCES Customer (customer_id)
+      DEFAULT LABEL OPTIONS (
+        description = 'Connects each support ticket to the customer who opened it (N:1)',
+        synonyms = ['filed by', 'submitted by'],
+        extensions = [('cardinality', 'N:1')]
+      )
+      NO PROPERTIES
   );
