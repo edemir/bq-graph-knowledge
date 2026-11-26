@@ -14,6 +14,7 @@ Companion code for the blog series on building a warehouse-native semantic layer
 | [`part2_skill/skills/bigquery-semantic-graph/SKILL.md`](part2_skill/skills/bigquery-semantic-graph/SKILL.md) | Part 2 | 78-line portable skill using symbolic SQL templates (`Entity`, `Parent`, `Child`, `BranchA`, `BranchB`) and `adk_additional_tools: [execute_sql]` |
 | [`part2_skill/agent_under_test/agent.py`](part2_skill/agent_under_test/agent.py) | Part 2 | ADK 2 `App` with async Knowledge Catalog hydration (`searchEntries` + `lookupContext`), TTL cache, `SkillToolset`, and read-only `BigQueryToolset` |
 | [`part2_skill/deploy_agent_engine.sh`](part2_skill/deploy_agent_engine.sh) | Part 2 | Idempotent deployment script for Agent Runtime on Gemini Enterprise Agent Platform with least-privilege IAM and OpenTelemetry |
+| [`part2_skill/BENCHMARK_QUERIES.md`](part2_skill/BENCHMARK_QUERIES.md) | Part 2 | All 20 business and adversarial benchmark questions (`B01`–`B10`, `T01`–`T10`) and their canonical `CommerceGraph` queries |
 
 ## Quickstart
 
