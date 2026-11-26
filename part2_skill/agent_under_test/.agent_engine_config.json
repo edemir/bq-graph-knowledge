@@ -1,0 +1,8 @@
+{
+  "display_name": "BigQuery Semantic Graph Analyst",
+  "description": "ADK 2 BigQuery Semantic Graph analyst grounded in Knowledge Catalog with progressive SkillToolset gating.",
+  "python_version": "3.12",
+  "extra_packages": [
+    "../skills"
+  ]
+}
