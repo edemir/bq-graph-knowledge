@@ -9,7 +9,8 @@ PROJECT_ID="${GOOGLE_CLOUD_PROJECT:?Set GOOGLE_CLOUD_PROJECT}"
 REGION="${AGENT_ENGINE_REGION:-us-central1}"
 BQ_LOCATION="${BQ_LOCATION:-us}"
 BQ_DATASET="${BQ_DATASET:-commerce_bench}"
-MODEL_ID="${MODEL_ID:-gemini-3.5-flash-lite}"
+MODEL_ID="${MODEL_ID:-gemini-4-hydrogen}"
+THINKING_LEVEL="${THINKING_LEVEL:-LOW}"
 AGENT_ENGINE_ID="${AGENT_ENGINE_ID:-}"
 SA_NAME="${AGENT_SA_NAME:-bq-graph-agent-sa}"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
@@ -22,6 +23,8 @@ gcloud services enable \
   bigquery.googleapis.com \
   dataplex.googleapis.com \
   telemetry.googleapis.com \
+  cloudtrace.googleapis.com \
+  logging.googleapis.com \
   --project="${PROJECT_ID}" --quiet
 
 echo "==> Ensuring runtime service account ${SA_EMAIL}..."
@@ -39,6 +42,8 @@ ROLES=(
   "roles/dataplex.catalogViewer"
   "roles/dataplex.dataScanDataViewer"
   "roles/telemetry.writer"
+  "roles/cloudtrace.agent"
+  "roles/monitoring.metricWriter"
   "roles/logging.logWriter"
   "roles/serviceusage.serviceUsageConsumer"
 )
@@ -57,9 +62,12 @@ cleanup() {
 trap cleanup EXIT
 
 cat > "${ENV_FILE}" <<EOF
+BQ_PROJECT_ID=${PROJECT_ID}
 BQ_LOCATION=${BQ_LOCATION}
 BQ_DATASET=${BQ_DATASET}
 MODEL_ID=${MODEL_ID}
+THINKING_LEVEL=${THINKING_LEVEL}
+OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental
 OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=SPAN_AND_EVENT
 ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS=true
 EOF

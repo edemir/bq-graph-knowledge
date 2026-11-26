@@ -1,7 +1,7 @@
 ---
 name: bigquery-semantic-graph
 metadata:
-  version: "0.9.3"
+  version: "0.9.5"
   category: BigDataAndAnalytics
   adk_additional_tools:
     - execute_sql
@@ -26,7 +26,7 @@ description: >-
 
 ## 3. `GRAPH_EXPAND` Rules
 
-1. Single-quote `'project.dataset.Graph'` (no `TABLE` or backticks) and set `start_node => '<FinestNode>'`. Expanding a child node (`'Child'`) flattens all `N:1` ancestors (`Child_*`, `Parent_*`, `Entity_*`) and automatically deduplicates ancestor `AGG()` measures per parent key; never join `GRAPH_EXPAND` to `GRAPH_EXPAND` along a single `N:1` chain:
+1. Single-quote `'project.dataset.Graph'` (no `TABLE` or backticks) and set `start_node => '<FinestNode>'`. Expanding a child node (`'Child'`) flattens all `N:1` ancestors (`Child_*`, `Parent_*`, `Entity_*`) and automatically deduplicates ancestor `AGG()` measures (including distinct-count measures like `AGG(Parent_cnt)`) per parent key, even when grouping by `Child_dim`; do not split `Child` and `Parent` into separate `GRAPH_EXPAND` CTEs along a single `N:1` chain:
 
 ```sql
 SELECT Entity_dim, AGG(Child_m1) AS m1, AGG(Parent_m2) AS m2, AGG(Parent_cnt) AS cnt,
@@ -37,9 +37,10 @@ GROUP BY Entity_dim;
 ```
 
 2. Prefix every column `<NodeLabel>_<prop>`. Never run `SELECT * FROM GRAPH_EXPAND(...)`, even with `LIMIT` (`*` includes `MEASURE` columns and fails at compile time with HTTP 400); read exact filter strings from `sampleValues` in `relatedResources`, or query explicit `DIMENSION` columns (`SELECT DISTINCT Node_dim FROM GRAPH_EXPAND(...)`) if you need to inspect values.
-3. Always call governed `AGG(<NodeLabel>_<measure>)` directly inside `GRAPH_EXPAND` whenever a matching `MEASURE` exists (matching `synonyms` and `description` in the graph context, such as `AGG(Parent_cnt)`); only use `COUNT(<NodeLabel>_<id>)` inside `GRAPH_EXPAND` for a node that defines no count `MEASURE`. Filter `MEASURE`s via `WHERE` (using separate CTEs for distinct filter slices; never use `CASE WHEN`, `AGG(... WHERE ...)`, `SUM`/`COUNT`/`AVG` on a `MEASURE`, raw formulas from the graph context, or unaggregated `MEASURE`s outside a CTE).
-4. Use `COALESCE(AGG(...), 0)` for empty sums/counts and `NULLIF(denom, 0)` so `0/0` ratios stay `NULL`.
-5. For sibling `1:N` branches (`BranchA -> Entity <- BranchB`), distinct filtered slices, or zero-activity anti-joins (`COALESCE(cnt, 0) = 0`), aggregate each branch at the output grain in `WITH` CTEs anchored on the shared entity node:
+3. Always call governed `AGG(<NodeLabel>_<measure>)` directly inside `GRAPH_EXPAND` whenever a matching `MEASURE` exists (matching `synonyms` and `description` in the graph context, including ancestor measures like `AGG(Parent_cnt)` when expanding `'Child'` and grouping by `Child_dim`—never substitute raw `COUNT(DISTINCT ...)` or `CASE WHEN` for a governed measure); only use `COUNT(<NodeLabel>_<id>)` inside `GRAPH_EXPAND` for a node that defines no count `MEASURE`. Filter `MEASURE`s via `WHERE` (using separate CTEs for distinct filter slices; never use `CASE WHEN`, `AGG(... WHERE ...)`, `SUM`/`COUNT`/`AVG` on a `MEASURE`, raw formulas from the graph context, or unaggregated `MEASURE`s outside a CTE).
+4. Trust `GRAPH_EXPAND` and `AGG()` deduplication: once a governed `GRAPH_EXPAND` query returns the requested columns, answer directly without running follow-up sanity-check or manual-deduplication queries.
+5. Use `COALESCE(AGG(...), 0)` for empty sums/counts and `NULLIF(denom, 0)` so `0/0` ratios stay `NULL`.
+6. For sibling `1:N` branches (`BranchA -> Entity <- BranchB`), distinct filtered slices, or zero-activity anti-joins (`COALESCE(cnt, 0) = 0`), aggregate each branch at the output grain in `WITH` CTEs anchored on the shared entity node:
 
 ```sql
 WITH d AS (

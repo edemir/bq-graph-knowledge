@@ -19,6 +19,7 @@ from google.adk.integrations.bigquery import BigQueryToolset
 from google.adk.integrations.bigquery.config import BigQueryToolConfig, WriteMode
 from google.adk.models.google_llm import Gemini
 from google.adk.skills import load_skills_from_dir
+from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.skill_toolset import SkillDiscoveryMode, SkillToolset
 from google.genai import types
 import requests
@@ -49,13 +50,15 @@ def _resolve_skills_dir() -> Path:
 
 
 PROJECT_ID = _require_env("GOOGLE_CLOUD_PROJECT")
+BQ_PROJECT_ID = os.environ.get("BQ_PROJECT_ID", "").strip() or PROJECT_ID
 LOCATION = os.environ.get("BQ_LOCATION", "us")
-DATASET = os.environ.get("BQ_DATASET", "demo")
+DATASET = os.environ.get("BQ_DATASET", "commerce_bench")
 MODEL_ID = (
     os.environ.get("MODEL_ID")
     or os.environ.get("EVAL_MODEL_ID")
-    or "gemini-3.5-flash-lite"
+    or "gemini-4-hydrogen"
 )
+THINKING_LEVEL = os.environ.get("THINKING_LEVEL", "LOW")
 SKILLS_DIR = _resolve_skills_dir()
 
 _GRAPH_CONTEXT_TTL_S = 600.0
@@ -67,7 +70,7 @@ _CACHED_GRAPH_CONTEXT: tuple[float, str] | None = None
 def _session() -> AuthorizedSession:
     creds, _ = google.auth.default(
         scopes=["https://www.googleapis.com/auth/cloud-platform"],
-        quota_project_id=PROJECT_ID,
+        quota_project_id=BQ_PROJECT_ID,
     )
     return AuthorizedSession(creds)
 
@@ -75,7 +78,7 @@ def _session() -> AuthorizedSession:
 def _fetch_graph_context() -> str:
     http = _session()
     search_url = (
-        f"https://dataplex.googleapis.com/v1/projects/{PROJECT_ID}"
+        f"https://dataplex.googleapis.com/v1/projects/{BQ_PROJECT_ID}"
         "/locations/global:searchEntries"
         "?fields=results.dataplexEntry(name,entryType),nextPageToken"
     )
@@ -83,7 +86,7 @@ def _fetch_graph_context() -> str:
     page_token: str | None = None
     while True:
         payload: dict[str, object] = {
-            "scope": f"projects/{PROJECT_ID}",
+            "scope": f"projects/{BQ_PROJECT_ID}",
             "query": f"name:{DATASET}/propertyGraphs/",
             "pageSize": 100,
         }
@@ -108,7 +111,7 @@ def _fetch_graph_context() -> str:
         return ""
 
     lookup_resp = http.post(
-        f"https://dataplex.googleapis.com/v1/projects/{PROJECT_ID}"
+        f"https://dataplex.googleapis.com/v1/projects/{BQ_PROJECT_ID}"
         f"/locations/{LOCATION}:lookupContext",
         json={"resources": sorted(nodes)},
         timeout=30,
@@ -143,7 +146,7 @@ async def _ensure_graph_context(ctx: Context) -> types.Content | None:
     except (requests.RequestException, yaml.YAMLError) as exc:
         logger.warning(
             "Failed to load Knowledge Catalog graph context for %s.%s: %s",
-            PROJECT_ID,
+            BQ_PROJECT_ID,
             DATASET,
             exc,
         )
@@ -152,7 +155,7 @@ async def _ensure_graph_context(ctx: Context) -> types.Content | None:
             parts=[
                 types.Part.from_text(
                     text=(
-                        f"Graph context for `{PROJECT_ID}.{DATASET}` is temporarily "
+                        f"Graph context for `{BQ_PROJECT_ID}.{DATASET}` is temporarily "
                         "unavailable from Knowledge Catalog. Please try again shortly."
                     )
                 )
@@ -161,7 +164,7 @@ async def _ensure_graph_context(ctx: Context) -> types.Content | None:
     if not graph_context:
         logger.warning(
             "No Knowledge Catalog property graph nodes found for %s.%s.",
-            PROJECT_ID,
+            BQ_PROJECT_ID,
             DATASET,
         )
         return types.Content(
@@ -170,12 +173,31 @@ async def _ensure_graph_context(ctx: Context) -> types.Content | None:
                 types.Part.from_text(
                     text=(
                         f"No BigQuery Property Graph metadata was found in Knowledge "
-                        f"Catalog for `{PROJECT_ID}.{DATASET}`."
+                        f"Catalog for `{BQ_PROJECT_ID}.{DATASET}`."
                     )
                 )
             ],
         )
     ctx.state["graph_context"] = graph_context
+    return None
+
+
+def _cap_dry_runs(
+    tool: BaseTool,
+    args: dict[str, object],
+    ctx: Context,
+) -> dict[str, object] | None:
+    if tool.name == "execute_sql" and args.get("dry_run") is True:
+        count = int(ctx.state.get("temp:dry_runs", 0)) + 1
+        ctx.state["temp:dry_runs"] = count
+        if count > 1:
+            return {
+                "status": "SKIPPED",
+                "message": (
+                    "Dry-run limit reached for this turn. Execute the complete "
+                    "query directly with dry_run=False."
+                ),
+            }
     return None
 
 
@@ -190,16 +212,19 @@ root_agent = Agent(
         "Knowledge Catalog metadata and governed measures."
     ),
     generate_content_config=types.GenerateContentConfig(
-        thinking_config=types.ThinkingConfig(thinking_level="MEDIUM"),
+        thinking_config=types.ThinkingConfig(thinking_level=THINKING_LEVEL),
         http_options=types.HttpOptions(
             timeout=180_000,
             retry_options=types.HttpRetryOptions(attempts=4),
         ),
     ),
     before_agent_callback=_ensure_graph_context,
+    before_tool_callback=_cap_dry_runs,
     instruction=(
-        f"You are a data analytics assistant for BigQuery dataset `{PROJECT_ID}.{DATASET}` "
-        f"(location `{LOCATION}`). Answer accurately using governed data and never guess numbers.\n\n"
+        f"You are a data analytics assistant for BigQuery dataset `{BQ_PROJECT_ID}.{DATASET}` "
+        f"(location `{LOCATION}`). Answer accurately using governed data and never guess numbers. "
+        "`execute_sql` already enforces read-only mode and a 1 GB scan cap automatically; "
+        "run your composed query directly (`dry_run=False`) instead of dry-running individual CTEs.\n\n"
         "```yaml\n{graph_context?}\n```"
     ),
     tools=[
@@ -213,8 +238,8 @@ root_agent = Agent(
                     tool_filter=["execute_sql"],
                     bigquery_tool_config=BigQueryToolConfig(
                         write_mode=WriteMode.BLOCKED,
-                        compute_project_id=PROJECT_ID,
-                        default_project_id=PROJECT_ID,
+                        compute_project_id=BQ_PROJECT_ID,
+                        default_project_id=BQ_PROJECT_ID,
                         location=LOCATION,
                         max_query_result_rows=200,
                         maximum_bytes_billed=1_073_741_824,
